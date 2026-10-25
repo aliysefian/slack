@@ -1,0 +1,31 @@
+services:
+  bridge:
+    build: .
+    image: slack-telegram-bridge:latest
+    container_name: slack-telegram-bridge
+    restart: unless-stopped
+    environment:
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:?set in .env}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:?set in .env}
+      MY_SLACK_USER_ID: ${MY_SLACK_USER_ID:?set in .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # Bound to localhost; put a TLS reverse proxy (Caddy/nginx/Cloudflare Tunnel) in front.
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
